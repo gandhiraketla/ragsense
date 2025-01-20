@@ -1,0 +1,3 @@
+watchdog
+python-dotenv
+kafka-python

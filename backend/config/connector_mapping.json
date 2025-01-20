@@ -1,0 +1,13 @@
+{
+    "connectors": {
+      "local_filesystem": {
+        "class": "connectors.local.LocalFileSystemConnector",
+        "description": "Connector for monitoring local folders",
+        "config": {
+          "monitor_path": "C:\\datachime-data",
+          "kafka_topic": "file-events"
+        }
+      }
+    }
+  }
+  

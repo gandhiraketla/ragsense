@@ -1,0 +1,6 @@
+docker run --name some-zookeeper --restart always -d -p 2181:2181 zookeeper
+docker run -d --name kafka-container -p 9092:9092 -e KAFKA_BROKER_ID=1 -e KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181 confluentinc/confluent-local:latest
+
+docker exec -it kafka-container kafka-console-consumer --topic new_file_topic --bootstrap-server localhost:9092
+
+
