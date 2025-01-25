@@ -6,7 +6,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 from connectors.data_connector_base import DataSourceConnector
-from kafkamanager.kafka_producer import KafkaProducerManager
+from processor.rag_processor import DocumentProcessor
 
 class LocalFileSystemConnector(DataSourceConnector):
     """
@@ -22,9 +22,10 @@ class LocalFileSystemConnector(DataSourceConnector):
                         "timestamp": timestamp_str
                     }
                 }
+                print(f"New file detected: {file_path}")
+                DocumentProcessor().process_document(message)
                # self.producer.send(self.kafka_topic, json.dumps(message).encode("utf-8"))
-                print(f"Pushed to Kafka: {message}")
-                KafkaProducerManager().push_to_topic(message)
+                
 
     def read(self, data_id):
         """

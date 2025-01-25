@@ -1,0 +1,201 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Bedrock Knowledge Base setup with S3, Secrets Manager, and Lambda'
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: Name for the S3 bucket to store documents
+
+Resources:
+  # S3 Bucket - Created first without notification configuration
+  DocumentsBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Ref S3BucketName
+      VersioningConfiguration:
+        Status: Enabled
+
+  # Secrets Manager for Pinecone API Key
+  PineconeAPIKeySecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: 'pinecone-api-key'
+      SecretString: 'pcsk_2V6jbQ_PFPH3CXX7yeJNjkt36aWXwJBsHR3MiHaoe6S9A8cfpW66MTwChLEBgfV2ZftqcS'
+
+  # IAM Role for Lambda
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: 'LambdaAccessPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub 'arn:aws:s3:::${S3BucketName}/*'
+              - Effect: Allow
+                Action:
+                  - bedrock:IngestDocuments
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref PineconeAPIKeySecret
+
+  # Lambda Function
+  ProcessDocumentsFunction:
+    Type: 'AWS::Lambda::Function'
+    DependsOn: LambdaExecutionRole
+    Properties:
+      Handler: 'index.handler'
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import os
+
+          bedrock = boto3.client('bedrock')
+          knowledge_base_id = os.environ['KNOWLEDGE_BASE_ID']
+
+          def handler(event, context):
+              for record in event['Records']:
+                  bucket = record['s3']['bucket']['name']
+                  key = record['s3']['object']['key']
+                  
+                  # Ingest document into knowledge base
+                  response = bedrock.ingest_documents(
+                      knowledgeBaseId=knowledge_base_id,
+                      documents=[{
+                          's3Path': {
+                              'bucket': bucket,
+                              'key': key
+                          }
+                      }]
+                  )
+                  
+                  print(f"Ingested document {key} from bucket {bucket}")
+                  return response
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          KNOWLEDGE_BASE_ID: !Ref KnowledgeBase
+
+  # IAM Role for Bedrock
+  BedrockKnowledgeBaseRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: 'BedrockS3Access'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource: 
+                  - !Sub 'arn:aws:s3:::${S3BucketName}'
+                  - !Sub 'arn:aws:s3:::${S3BucketName}/*'
+        - PolicyName: 'BedrockPineconeAccess'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref PineconeAPIKeySecret
+
+  # Bedrock Knowledge Base
+  KnowledgeBase:
+    Type: 'AWS::Bedrock::KnowledgeBase'
+    DependsOn: BedrockKnowledgeBaseRole
+    Properties:
+      Name: 'realtime-knowledge-base'
+      RoleArn: !GetAtt BedrockKnowledgeBaseRole.Arn
+      KnowledgeBaseConfiguration:
+        Type: 'VECTOR'
+        EmbeddingModel:
+          ModelId: 'amazon.titan-embed-text-v2'
+        StorageConfiguration:
+          Type: 'PINECONE'
+          Pinecone:
+            Endpoint: 'https://knowledgebase-7kmx4ei.svc.aped-4627-b74a.pinecone.io'
+            CredentialsSecretArn: !Ref PineconeAPIKeySecret
+        DataSource:
+          S3Configuration:
+            BucketArn: !Sub 'arn:aws:s3:::${S3BucketName}'
+            InclusionPrefixes: ['/']
+
+  # S3 Bucket Permission for Lambda
+  BucketPermission:
+    Type: 'AWS::Lambda::Permission'
+    DependsOn: ProcessDocumentsFunction
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref ProcessDocumentsFunction
+      Principal: 's3.amazonaws.com'
+      SourceArn: !Sub 'arn:aws:s3:::${S3BucketName}'
+
+  # S3 Bucket Notification - Created last
+  BucketNotification:
+    Type: 'AWS::S3::BucketPolicy'
+    DependsOn: [BucketPermission, ProcessDocumentsFunction]
+    Properties:
+      Bucket: !Ref DocumentsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowS3Notifications
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action: 
+              - s3:PutObject
+            Resource: !Sub 'arn:aws:s3:::${S3BucketName}/*'
+            Condition:
+              StringEquals:
+                's3:x-amz-acl': 'bucket-owner-full-control'
+
+  # S3 Notification Configuration
+  S3NotificationConfig:
+    Type: Custom::S3BucketNotification
+    DependsOn: [BucketPermission, ProcessDocumentsFunction, BucketNotification]
+    Properties:
+      ServiceToken: !GetAtt ProcessDocumentsFunction.Arn
+      BucketName: !Ref DocumentsBucket
+      NotificationConfiguration:
+        LambdaFunctionConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Function: !GetAtt ProcessDocumentsFunction.Arn
+
+Outputs:
+  S3BucketName:
+    Description: 'Name of the created S3 bucket'
+    Value: !Ref DocumentsBucket
+  KnowledgeBaseId:
+    Description: 'ID of the created Bedrock Knowledge Base'
+    Value: !Ref KnowledgeBase
+  SecretARN:
+    Description: 'ARN of the Pinecone API Key secret'
+    Value: !Ref PineconeAPIKeySecret
