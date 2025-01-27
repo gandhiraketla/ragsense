@@ -1,4 +1,7 @@
 import os
+import requests
+from langchain.schema import Document
+from bs4 import BeautifulSoup
 from typing import List, Optional
 from dotenv import load_dotenv
 from pinecone import Pinecone
@@ -110,6 +113,84 @@ class AgenticRAGManager:
         for i in range(0, len(vectors), batch_size):
             batch = vectors[i:i + batch_size]
             self.index.upsert(vectors=batch)
+    def load_from_confluence(self, space_key: str, page_id: str) -> None:
+        """
+        Load and chunk content from a Confluence page, then store in Pinecone.
+        
+        Args:
+            space_key: Confluence space key
+            page_id: Confluence page ID
+        """
+        try:
+            print(f"Loading content from Confluence page {page_id} in space {space_key}")
+            
+            # Get Confluence credentials using EnvUtils
+            env_utils = EnvUtils()
+            confluence_url = env_utils.get_required_env("CONFLUENCE_URL")
+            username = env_utils.get_required_env("CONFLUENCE_USERNAME")
+            api_token = env_utils.get_required_env("CONFLUENCE_API_TOKEN")
+            
+            # Construct API endpoint
+            api_endpoint = f"{confluence_url}/rest/api/content/{page_id}?expand=body.storage,version"
+            
+            # Make API request
+            response = requests.get(api_endpoint, auth=(username, api_token))
+            response.raise_for_status()
+            
+            page_data = response.json()
+            html_content = page_data['body']['storage']['value']
+            page_title = page_data['title']
+            
+            # Convert HTML to text
+            soup = BeautifulSoup(html_content, 'html.parser')
+            text_content = soup.get_text(separator='\n', strip=True)
+            
+            # Create document
+            document = Document(
+                page_content=text_content,
+                metadata={
+                    'source': f"confluence/{space_key}/{page_title}"
+                }
+            )
+            
+            # Split into chunks
+            chunks = self.text_splitter.split_documents([document])
+            
+            # Prepare vectors for Pinecone
+            vectors = []
+            for i, chunk in enumerate(chunks):
+                # Generate embedding
+                embedding = self.embedding_model.encode(chunk.page_content)
+                
+                # Create metadata matching exact file format
+                metadata = {
+                    'text': chunk.page_content,
+                    'source': chunk.metadata['source'],
+                    'chunk_id': i
+                }
+                
+                # Prepare vector for upsert
+                vectors.append((
+                    f"confluence_{space_key}_{page_id}_{i}",  # ID
+                    embedding.tolist(),  # Vector
+                    metadata  # Metadata
+                ))
+            
+            # Upsert to Pinecone in batches
+            batch_size = 100
+            for i in range(0, len(vectors), batch_size):
+                batch = vectors[i:i + batch_size]
+                self.index.upsert(vectors=batch)
+                
+            print(f"Successfully loaded Confluence page {page_id}")
+            print(f"Created {len(vectors)} vectors from page content")
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Error accessing Confluence API: {str(e)}")
+            raise
+        except Exception as e:
+            print(f"Error processing Confluence content: {str(e)}")
+            raise
     def extract_citations(self, web_response) -> tuple[str, list[str]]:
         """
         Extract content and citations from Perplexity API response.
@@ -224,8 +305,9 @@ class AgenticRAGManager:
 def main():
     rag_manager = AgenticRAGManager()
     #rag_manager.load_from_local("C:\\datachime-demo\\AI-Retail-Suite.pdf")
-    answer=rag_manager.process_query("What are the features of AI Retail Suite")
-    print(answer)
+    #answer=rag_manager.process_query("What are the features of AI Retail Suite")
+    #print(answer)
+    rag_manager.load_from_confluence("~71202039d865b29006441a9b87f545b2b19e93", "1867795")
 
 if __name__ == "__main__":
     main()
