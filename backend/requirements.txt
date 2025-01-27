@@ -16,6 +16,7 @@ setuptools
 torch
 tensorflow
 quantulum3
+neo4j
 
 # Additional dependencies for document parsing:
 pdf2image 
@@ -25,3 +26,6 @@ python-pptx
 # For OCR support:
 tesseract
 poppler-utils
+neo4j-graphrag
+langchain-neo4j
+atlassian-python-api

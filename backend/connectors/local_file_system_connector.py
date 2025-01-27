@@ -7,6 +7,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 from connectors.data_connector_base import DataSourceConnector
 from processor.rag_processor import DocumentProcessor
+from processor.graph_rag import DatachimeGraphRAG
 
 class LocalFileSystemConnector(DataSourceConnector):
     """
@@ -23,7 +24,8 @@ class LocalFileSystemConnector(DataSourceConnector):
                     }
                 }
                 print(f"New file detected: {file_path}")
-                DocumentProcessor().process_document(message)
+                DatachimeGraphRAG().process_pdf_and_create_graph(file_path)
+                #DocumentProcessor().process_document(message)
                # self.producer.send(self.kafka_topic, json.dumps(message).encode("utf-8"))
                 
 
