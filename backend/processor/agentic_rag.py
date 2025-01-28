@@ -270,7 +270,7 @@ class AgenticRAGManager:
             except Exception as e:
                     print(f"Error in web search: {str(e)}")
                     web_context = None
-        print("Skipping the web search, I have all the information I need")
+        #print("Skipping the web search, I have all the information I need")
         answer_prompt = PromptTemplate.from_template(
             """Answer the following query based on the provided context. Ensure your answer is comprehensive and accurate.
             
