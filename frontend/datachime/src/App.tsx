@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ExternalLink, Mic, MicOff } from 'lucide-react';
 
+interface SearchResult {
+  answer: {
+    answer: string;
+    citations: string[];
+    internal_citations: Array<{
+      number: number;
+      source: string;
+      text: string;
+    }>;
+  };
+}
+
 function App() {
   const [query, setQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Initialize voice recognition on component mount
   useEffect(() => {
-    // Check if browser supports speech recognition
     const SpeechRecognition = 
       (window as any).SpeechRecognition || 
       (window as any).webkitSpeechRecognition;
@@ -39,44 +51,37 @@ function App() {
     }
   }, []);
 
-  // Sample data to simulate search results
-  const sampleResults = {
-    answer: "AI Retail Suite and MicroStrategy cater to different business needs with distinct features and pricing models.\n\nAI Retail Suite is specialized for retail operations, providing tools for retail analytics, dynamic pricing, and predictive capabilities. It offers intuitive dashboards and AI-driven insights that are easy to adopt for retail teams. It also forecasts inventory needs with 95% accuracy, reducing stockouts and overstock.\n\nOn the other hand, MicroStrategy is more comprehensive in its feature set and pricing flexibility. It offers features like HyperIntelligence, which provides instant data insights, Dossier for creating and sharing dynamic analytics reports, and Embedded Analytics for seamless integration of analytics within applications.",
-    citations: [
-      {
-        url: "https://www.spendflo.com/blog/microstrategy-pricing-guide",
-        title: "MicroStrategy Pricing Guide 2024",
-        source: "Spendflo",
-        snippet: "Comprehensive analysis of MicroStrategy's pricing structure."
-      },
-      {
-        url: "https://www.retailtouchpoints.com/features/solution-spotlight/eversight-launches-ai-powered-pricing-suite",
-        title: "AI-Powered Retail Analytics Solutions",
-        source: "Retail TouchPoints",
-        snippet: "Detailed review of AI Retail Suite's analytics capabilities."
-      }
-    ],
-    internal_citations: [
-      {
-        number: 1,
-        source: "Internal Documentation",
-        title: "Competitive Analysis Report",
-        text: "Comparison of AI Retail Suite with leading competitors in the market."
-      }
-    ]
-  };
-
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!query.trim()) return;
 
-    // Simulate loading
     setIsLoading(true);
+    setError(null);
     
-    // Simulate API delay
-    setTimeout(() => {
-      setSearchResults(sampleResults);
+    try {
+      const encodedQuery = encodeURIComponent(query.trim());
+      const response = await fetch(`http://localhost:8000/query?query=${encodedQuery}`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            query: query.trim()
+          })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Search failed with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (err) {
+      console.error('Search error:', err);
+      setError('Failed to fetch results. Please try again.');
+      setSearchResults(null);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -145,15 +150,12 @@ function App() {
               onKeyPress={handleKeyPress}
             />
             <div className="absolute right-0 top-0 h-full flex items-center pr-3 space-x-2">
-              {/* Voice Input Button */}
               <button 
                 className={`p-2 ${isListening ? 'text-red-600' : 'text-gray-400 hover:text-indigo-600'}`}
                 onClick={toggleVoiceInput}
               >
                 {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
               </button>
-
-              {/* Search Button */}
               <button 
                 className={`p-2 ${query.trim() ? 'text-indigo-600 hover:text-indigo-800' : 'text-gray-400'}`}
                 onClick={handleSearch}
@@ -164,6 +166,15 @@ function App() {
             </div>
           </div>
         </div>
+
+        {/* Error State */}
+        {error && (
+          <div className="max-w-3xl mx-auto mb-8">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-800">{error}</p>
+            </div>
+          </div>
+        )}
 
         {/* Loading State */}
         {isLoading && (
@@ -179,7 +190,7 @@ function App() {
             {/* Main Answer Column */}
             <div className="flex-1 max-w-3xl">
               <div className="bg-white rounded-lg shadow-sm p-6">
-                {searchResults.answer.split('\n\n').map((paragraph: string, idx: number) => (
+                {searchResults.answer.answer.split('\n\n').map((paragraph: string, idx: number) => (
                   <p key={idx} className="mb-4 text-gray-700 leading-relaxed text-lg">
                     {paragraph}
                   </p>
@@ -194,47 +205,48 @@ function App() {
                 
                 {/* External Citations */}
                 <div className="space-y-4">
-                  {searchResults.citations.map((citation: any, idx: number) => (
+                  {searchResults.answer.citations.map((url, idx) => (
                     <div key={idx} className="bg-white/80 backdrop-blur-sm border border-indigo-100 rounded-lg overflow-hidden hover:bg-white transition-colors duration-200">
                       <div className="p-4">
                         <div className="flex items-center justify-between mb-2">
                           <a 
-                            href={citation.url} 
-                            className="text-indigo-600 hover:text-indigo-800"
+                            href={url} 
+                            className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-sm break-all"
                             target="_blank"
                             rel="noopener noreferrer"
-                          >{citation.url}
-                            <ExternalLink className="w-4 h-4" />
+                          >
+                            {url}
+                            <ExternalLink className="w-4 h-4 flex-shrink-0" />
                           </a>
                         </div>
-                        
                       </div>
                     </div>
                   ))}
                 </div>
 
                 {/* Internal Citations */}
-                <h3 className="text-sm font-semibold text-indigo-900 mt-6 mb-4">Internal Sources</h3>
-                <div className="space-y-4">
-                  {searchResults.internal_citations.map((citation: any, idx: number) => (
-                    <div key={idx} className="bg-white/60 backdrop-blur-sm border border-purple-100 rounded-lg p-4 hover:bg-white/80 transition-colors duration-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-purple-600">
-                          {citation.source}
-                        </span>
-                        <span className="text-xs font-medium text-purple-500">
-                          Citation {citation.number}
-                        </span>
-                      </div>
-                      <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                        {citation.title}
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        {citation.text}
-                      </p>
+                {searchResults.answer.internal_citations.length > 0 && (
+                  <>
+                    <h3 className="text-sm font-semibold text-indigo-900 mt-6 mb-4">Internal Sources</h3>
+                    <div className="space-y-4">
+                      {searchResults.answer.internal_citations.map((citation, idx) => (
+                        <div key={idx} className="bg-white/60 backdrop-blur-sm border border-purple-100 rounded-lg p-4 hover:bg-white/80 transition-colors duration-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-purple-600">
+                              {citation.source.split('/').pop()}
+                            </span>
+                            <span className="text-xs font-medium text-purple-500">
+                              Citation {citation.number}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {citation.text}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
