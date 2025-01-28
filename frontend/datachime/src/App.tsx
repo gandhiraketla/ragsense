@@ -4,12 +4,12 @@ import { Search, ExternalLink, Mic, MicOff } from 'lucide-react';
 interface SearchResult {
   answer: {
     answer: string;
-    citations: string[];
+    citations: string[] | null;
     internal_citations: Array<{
       number: number;
       source: string;
       text: string;
-    }>;
+    }> | null;
   };
 }
 
@@ -62,11 +62,9 @@ function App() {
       const response = await fetch(`http://localhost:8000/query?query=${encodedQuery}`, {
         method: 'POST',
         headers: {
-            'Accept': 'application/json'
+          'Accept': 'application/json'
         },
-        body: JSON.stringify({
-            query: query.trim()
-          })
+        body: ''
       });
 
       if (!response.ok) {
@@ -204,28 +202,30 @@ function App() {
                 <h3 className="text-sm font-semibold text-indigo-900 mb-4">Sources</h3>
                 
                 {/* External Citations */}
-                <div className="space-y-4">
-                  {searchResults.answer.citations.map((url, idx) => (
-                    <div key={idx} className="bg-white/80 backdrop-blur-sm border border-indigo-100 rounded-lg overflow-hidden hover:bg-white transition-colors duration-200">
-                      <div className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <a 
-                            href={url} 
-                            className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-sm break-all"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {url}
-                            <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                          </a>
+                {searchResults.answer.citations && searchResults.answer.citations.length > 0 && (
+                  <div className="space-y-4">
+                    {searchResults.answer.citations.map((url, idx) => (
+                      <div key={idx} className="bg-white/80 backdrop-blur-sm border border-indigo-100 rounded-lg overflow-hidden hover:bg-white transition-colors duration-200">
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <a 
+                              href={url} 
+                              className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-sm break-all"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {url}
+                              <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                            </a>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Internal Citations */}
-                {searchResults.answer.internal_citations.length > 0 && (
+                {searchResults.answer.internal_citations && searchResults.answer.internal_citations.length > 0 && (
                   <>
                     <h3 className="text-sm font-semibold text-indigo-900 mt-6 mb-4">Internal Sources</h3>
                     <div className="space-y-4">
@@ -233,7 +233,7 @@ function App() {
                         <div key={idx} className="bg-white/60 backdrop-blur-sm border border-purple-100 rounded-lg p-4 hover:bg-white/80 transition-colors duration-200">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-purple-600">
-                              {citation.source.split('/').pop()}
+                              {citation.source.split('\\').pop()}
                             </span>
                             <span className="text-xs font-medium text-purple-500">
                               Citation {citation.number}
