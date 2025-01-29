@@ -118,7 +118,7 @@ function App() {
               <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
               </svg>
-              <span className="ml-2 text-2xl font-bold text-white">Datachime</span>
+              <span className="ml-2 text-2xl font-bold text-white">RAG Sense</span>
             </div>
             <div className="text-white/90 font-medium">
               {new Date().toLocaleString('en-US', { 
