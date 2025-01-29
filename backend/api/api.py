@@ -7,6 +7,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 from processor.agentic_rag import AgenticRAGManager
 import uvicorn
+from connectors.data_loader import DataLoader
 
 # Create the app outside any class or function
 app = FastAPI()
@@ -22,7 +23,7 @@ app.add_middleware(
 
 # Initialize RAG Manager
 rag_manager = AgenticRAGManager()
-
+data_loader = DataLoader()
 @app.post("/query")
 async def process_query(query: str):
     try:
@@ -30,6 +31,12 @@ async def process_query(query: str):
         return {"answer": answer}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+@app.post("/load_data")
+async def load_data(data: dict):
+    try:
+        result = data_loader.load_data(data)
+        return {"result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 if __name__ == "__main__":
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)

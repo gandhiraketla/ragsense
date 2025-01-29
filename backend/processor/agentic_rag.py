@@ -65,54 +65,7 @@ class AgenticRAGManager:
         )
         #os.environ["PERPLEXITY_API_KEY"] = self.perplexity_api_key
         #os.environ["PERPLEXITY_MODEL"] = self.env_utils.get_required_env("PERPLEXITY_MODEL_NAME")
-    def load_from_local(self, file_path: str) -> None:
-        """
-        Load and chunk a document from local storage, then store in Pinecone.
-        
-        Args:
-            file_path: Path to the local document
-        """
-        # Determine file type and load accordingly
-        if file_path.endswith('.pdf'):
-            loader = PyPDFLoader(file_path)
-        elif file_path.endswith('.txt'):
-            loader = TextLoader(file_path)
-        else:
-            raise ValueError("Unsupported file type. Only PDF and TXT files are supported.")
-        
-        # Load and chunk the document
-        document = loader.load()
-        chunks = self.text_splitter.split_documents(document)
-        
-        # Prepare vectors for Pinecone
-        vectors = []
-        for i, chunk in enumerate(chunks):
-            # Generate embedding
-            embedding = self.embedding_model.encode(chunk.page_content)
-            
-            # Create metadata
-            metadata = {
-                'text': chunk.page_content,
-                'source': file_path,
-                'chunk_id': i
-            }
-            
-            # Add any additional metadata from the document
-            if hasattr(chunk, 'metadata'):
-                metadata.update(chunk.metadata)
-            
-            # Prepare vector for upsert
-            vectors.append((
-                f"{os.path.basename(file_path)}_{i}",  # ID
-                embedding.tolist(),  # Vector
-                metadata  # Metadata
-            ))
-        
-        # Upsert to Pinecone in batches
-        batch_size = 100
-        for i in range(0, len(vectors), batch_size):
-            batch = vectors[i:i + batch_size]
-            self.index.upsert(vectors=batch)
+    
     def load_from_confluence(self, space_key: str, page_id: str) -> None:
         """
         Load and chunk content from a Confluence page, then store in Pinecone.

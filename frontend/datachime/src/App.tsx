@@ -233,7 +233,7 @@ function App() {
                         <div key={idx} className="bg-white/60 backdrop-blur-sm border border-purple-100 rounded-lg p-4 hover:bg-white/80 transition-colors duration-200">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-purple-600">
-                              {citation.source.split('\\').pop()}
+                            {(citation.source.split('\\').pop() || '').slice(0, 25) + ((citation.source.split('\\').pop() || '').length > 25 ? '...' : '')}
                             </span>
                             <span className="text-xs font-medium text-purple-500">
                               Citation {citation.number}

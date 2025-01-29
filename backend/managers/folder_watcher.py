@@ -6,6 +6,7 @@ if parent_dir not in sys.path:
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from connectors.local_file_system_connector import LocalFileSystemConnector
+from connectors.data_loader import DataLoader
 import time
 
 class FolderWatchHandler(FileSystemEventHandler):
@@ -15,7 +16,18 @@ class FolderWatchHandler(FileSystemEventHandler):
     def on_created(self, event):
         if not event.is_directory:
             print(f"New file detected: {event.src_path}")
-            LocalFileSystemConnector().identify_new_data(event.src_path)
+            file_path = event.src_path
+            test_data = {
+                "source": "local_filesystem",
+                "data_id": file_path,
+                "metadata": {
+                    "timestamp": "2024-01-28T12:00:00",
+                    "space": ""
+                }
+            }
+            print(test_data)
+            loader = DataLoader()
+            result = loader.load_data(test_data)
 
 
 def start_folder_watcher(monitor_path):
