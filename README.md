@@ -51,14 +51,30 @@ CONFLUENCE_USERNAME=
 CONFLUENCE_API_TOKEN=
 PERPLEXITY_API_KEY=
 PERPLEXITY_MODEL_NAME=
-PINECONE_HOST=
+PINECONE_HOST=https://ragindex-7kmx4ei.svc.aped-4627-b74a.pinecone.io
 OPENAI_API_KEY=
-PINECONE_INDEX=
+PINECONE_INDEX=ragindex
 PINECONE_API_KEY=
 LOCAL_FOLDER_MONITOR_PATH=
 ```
 
-### Step 6: Start the Backend Services
+### Step 6: Create Pinecone Index (via UI)
+Follow these steps to create a Pinecone index using the Pinecone web UI:
+
+1. Log in to your Pinecone account at [https://app.pinecone.io](https://app.pinecone.io).
+2. Navigate to the **Indexes** tab from the dashboard.
+3. Click on the **Create Index** button.
+4. Fill in the following details:
+   - **Index Name**: `ragindex`
+   - **Dimension**: `1024` (suitable for multilingual-e5-large embeddings)
+   - **Metric**: `cosine`
+   - **Pods**: Choose an appropriate number of pods based on your use case (e.g., `1 pod` for development).
+5. Click **Create Index**.
+6. Once the index is created, copy the **Index Name**, **API Key**, and **Host URL**, and update the respective fields in your `.env` file.
+
+---
+
+### Step 7: Start the Backend Services
 #### Start Folder Watcher
 ```sh
  python main.py
@@ -116,4 +132,3 @@ We welcome contributions! Please **fork the repository**, create a new branch fo
 This project is **open-source** and available under the **MIT License**.
 
 For any issues or questions, feel free to raise an issue on [GitHub](https://github.com/gandhiraketla/datachime/issues).
-
