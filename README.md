@@ -1,8 +1,8 @@
-# DataChime
+# RAG Sense
 
 ## Introduction
 
-**DataChime** is an **agentic RAG (Retrieval-Augmented Generation) application** designed to empower enterprises with **context-aware AI-driven insights**. DataChime leverages **Pinecone** for vector storage, **LangChain** for advanced retrieval workflows, and multiple data sources including **Confluence pages, local file monitoring, and web-based knowledge** to enhance response accuracy. It provides a **seamless API interface** and a **React-based frontend**, making it easy to integrate into existing workflows.
+**RAG Sense** is an **agentic RAG (Retrieval-Augmented Generation) application** designed to empower enterprises with **context-aware AI-driven insights**. DataChRAG Senseime leverages **Pinecone** for vector storage, **LangChain** for advanced retrieval workflows, and multiple data sources including **Confluence pages, local file monitoring, and web-based knowledge** to enhance response accuracy. It provides a **seamless API interface** and a **React-based frontend**, making it easy to integrate into existing workflows.
 
 ---
 
