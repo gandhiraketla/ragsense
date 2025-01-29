@@ -102,6 +102,11 @@ Once both the backend and frontend services are running, you can interact with t
 
 ---
 
+## Adding a New Data Connector
+To add a new data connector, develop the connector as per `connectors.DataSourceConnector` and make an entry in `config.connector_mapping.json`.
+
+---
+
 ## Contributing
 We welcome contributions! Please **fork the repository**, create a new branch for your changes, and submit a pull request.
 
