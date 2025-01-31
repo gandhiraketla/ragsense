@@ -22,7 +22,7 @@ Ensure you have the following installed:
 
 ### Step 2: Navigate to the Backend Directory
 ```sh
- cd datachime/backend
+ cd ragsense/backend
 ```
 
 ### Step 3: Create and Activate a Virtual Environment
